@@ -1,85 +1,99 @@
 #!/usr/local/bin/python2.7
 
-import xml.etree.ElementTree as ET
 import urllib2
-import os
 import pdb
 import pyperclip
+import json
+import datetime
+import time
+
 
 class Game:
     """ holds data about a game
 
     Attributes
-        homeTeamName:
-        awayTeamName:
+        date:
+        gameID:
         homeTeamID:
         awayTeamID:
         homeTeamStream:
         awayTeamStream:
     """
-    def __init__(self, homeTeamName, awayTeamName):
-        self.homeTeamName = homeTeamName
-        self.awayTeamName = awayTeamName
-        self.homeTeamID = ""
-        self.homeTeamStream = ""
-        self.awayTeamID = ""
-        self.awayTeamStream = ""
+   
+    def __init__(self, homeTeamID, awayTeamID):
+        self.homeTeamID = homeTeamID
+        self.awayTeamID = awayTeamID
+        
 
     def printOut(self):
-        print self.homeTeamName.capitalize() + " vs. " + self.awayTeamName.capitalize()
+        print self.homeTeamID + " vs. " + self.awayTeamID
         print self.homeTeamID + ": " + self.homeTeamStream
         print self.awayTeamID + ": " + self.awayTeamStream
 
     def description(self):
-        return self.homeTeamName.capitalize() + " vs. " + self.awayTeamName.capitalize()
+        return time.strftime("%d/%m/%Y %H:%M:%S", self.date) + ": " +  self.homeTeamID + " vs. " + self.awayTeamID + " " + str(self.gameID)
 
     def printStreams(self):
         print "(1)  " + self.homeTeamID + ": " + self.homeTeamStream
         print "(2)  " + self.awayTeamID + ": " + self.awayTeamStream
 
 
-def parseFeed(xml_string):
-    gamesXML = ET.fromstring(xml_string);
+def addStreamsToGame(game):
+    ID1 = str(game.gameID)[4:6]
+    ID2 = str(game.gameID)[6:11]
+    jsonURL = "http://smb.cdnak.neulion.com/fs/nhl/mobile/feed_new/data/streams/2013/ipad/" + ID1 + "_" + ID2 + ".json"
+    req = urllib2.Request(jsonURL)
+    f = urllib2.urlopen(req)
+    streamObj = json.loads(f.read())
+    game.homeTeamStream = streamObj["gameStreams"]["ipad"]["home"]["live"]["bitrate0"]
+    game.awayTeamStream = streamObj["gameStreams"]["ipad"]["away"]["live"]["bitrate0"]
+
+def gameFromJSON(gameJSON):
+    game = Game(gameJSON['h'], gameJSON['a'])
+    game.date = time.strptime(gameJSON['est'], "%Y%m%d %H:%M:%S")
+    game.gameID = gameJSON['id']
+    return game
+
+
+def getAllGames(scheduleURL):
+    req = urllib2.Request(scheduleURL)
+    f = urllib2.urlopen(req)
+    jsonSchedule = f.read()
+    gameList = json.loads(jsonSchedule)
     games = []
-    for gameXML in gamesXML: 
-        homeTeamName =  gameXML.find('home_teamname').text
-        awayTeamName = gameXML.find('away_teamname').text 
-
-        game = Game(homeTeamName, awayTeamName)
-        #print homeTeamName.capitalize() + " vs. " + awayTeamName.capitalize()
-
-        assignments = gameXML.find('assignments')
-        feeds = assignments.findall('assignment')
-        homeFeed = feeds[0]
-        game.homeTeamID = homeFeed.find('team_id').text
-        game.homeTeamStream = homeFeed.find('ipad_url').text
-        
-
-        awayFeed = feeds[1]
-        game.awayTeamID = awayFeed.find('team_id').text
-        game.awayTeamStream = awayFeed.find('ipad_url').text
-
-        #print teamName + ": " + feedURL
-
-        games.append(game)
-
+    for gameJSON in gameList:
+        games.append(gameFromJSON(gameJSON))
+   
     return games
-            
 
-        
+def getGames(scheduleURL, checkTime):
+    allGames=getAllGames(scheduleURL)
+    margin = datetime.timedelta(hours = 12) 
+    
+    todayGames = []
+    for game in allGames:
+        gameDT = datetime.datetime.fromtimestamp(time.mktime(game.date))
+        if checkTime - margin <= gameDT <= checkTime + margin:
+            addStreamsToGame(game)
+            todayGames.append(game)
 
-feedURL = "http://208.92.36.37/nlds/as3/get_games.php?client=nhl&playerclient=hop"
-req = urllib2.Request(feedURL)
-f = urllib2.urlopen(req)
-xml_string = f.read()
-games = parseFeed(xml_string)
+    return todayGames
+  
+
+
+scheduleURL = "http://live.nhl.com/GameData/SeasonSchedule-20132014.json"
+
+checkTime = datetime.datetime.now()
+
+games = getGames(scheduleURL, checkTime)
+
+pdb.set_trace()
+
 
 print ""
 i = 1
 for game in games:
-    print "Game " + str(i) 
-    print "----------------------------"
-    print game.description()
+    print "Game " + str(i) + "   ---   " + game.description()
     print ""
     i += 1
 
@@ -103,3 +117,6 @@ else:
 
 pyperclip.copy(selectedStream)
 print "Copied " + selectedStream + " to clipboard."
+
+
+
