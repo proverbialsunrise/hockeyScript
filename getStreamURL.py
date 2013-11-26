@@ -74,13 +74,47 @@ def getGames(scheduleURL, checkTime):
     for game in allGames:
         gameDT = datetime.datetime.fromtimestamp(time.mktime(game.date))
         if checkTime - margin <= gameDT <= checkTime + margin:
-            addStreamsToGame(game)
-            todayGames.append(game)
+            try:
+                addStreamsToGame(game)
+                todayGames.append(game)
+            except KeyError:
+                continue
 
     return todayGames
   
-
-
+'''all_names = {
+        BOS : "Boston Bruins",
+        BUF : "Buffalo Sabres",
+        CGY : "Calgary Flames",
+        CHI : "Chicago Blackhawks",
+        DET : "Detroit Red Wings",
+        EDM : "Edmonton Oilers",
+        CAR : "Carolina Hurricanes",
+        LAK : "Los Angeles Kings",
+        MTL : "Montreal Canadiens",
+        DAL : "Dallas Stars",
+        NJD : "New Jersey Devils",
+        NYI : "New York Islanders",
+        NYR : "New York Rangers",
+        PHI : "Philadelphia Flyers",
+        PIT : "Pittsburgh Penguins",
+        COL : "Colorado Avalanche",
+        STL : "St. Louis Blues",
+        TOR : "Toronto Maple Leafs",
+        VAN : "Vancouver Canucks",
+        WSH : "Washington Capitals",
+        PHX : "Phoenix Coyotes",
+        SJS : "San Jose Sharks",
+        OTT : "Ottawa Senators",
+        TBL : "Tampa Bay Lightning",
+        ANA : "Anaheim Ducks",
+        FLA : "Florida Panthers",
+        CBJ : "Columbus Blue Jackets",
+        MIN : "Minnesota Wild",
+        NSH : "Nashville Predators",
+        WPG : "Winnipeg Jets"
+    }
+'''
 scheduleURL = "http://live.nhl.com/GameData/SeasonSchedule-20132014.json"
 
 checkTime = datetime.datetime.now()
