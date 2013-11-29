@@ -121,8 +121,7 @@ checkTime = datetime.datetime.now()
 
 games = getGames(scheduleURL, checkTime)
 
-pdb.set_trace()
-
+#pdb.set_trace()
 
 print ""
 i = 1
